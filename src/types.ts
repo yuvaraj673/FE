@@ -13,11 +13,11 @@ export enum EmergencyType {
   CARDIAC_ARREST = 'Cardiac Arrest',
   BLEEDING = 'Bleeding',
   BURNS = 'Burns',
-  CHOKING = 'Choking',
+  ACCIDENT = 'Accident',
   FRACTURE = 'Fracture',
   FIRE = 'Fire',
   POISONING = 'Poisoning',
-  SEIZURE = 'Seizure',
+  ASTHMA = 'Asthma',
   ALLERGIC_REACTION = 'Allergic Reaction',
   OTHER = 'Other'
 }

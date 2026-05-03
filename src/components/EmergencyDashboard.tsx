@@ -121,9 +121,9 @@ export default function EmergencyDashboard() {
       backToHome: "Back to Home",
       presets: "Emergency Presets",
       cpr: "Unconscious/CPR",
-      choking: "Choking",
+      accident: "Accident",
       bleeding: "Heavy Bleeding",
-      seizure: "Shaking/Seizure",
+      asthma: "Asthma",
       allergy: "Allergy/Swelling"
     },
     'hi-IN': {
@@ -153,10 +153,10 @@ export default function EmergencyDashboard() {
       rateExperience: "आपका अनुभव कैसा रहा?",
       backToHome: "मुख्य पृष्ठ पर लौटें",
       presets: "आपातकालीन प्रीसेट",
-      cpr: "बेहोश/सीपीआर",
-      choking: "दम घुटना",
-      bleeding: "भारी रक्तस्राव",
-      seizure: "दौरा",
+      cpr: "बेहोش/सीपीआर",
+      accident: "दुर्घटना",
+      bleeding: "भारी रक्तस్రాव",
+      asthma: "अस्थमा",
       allergy: "एलर्जी/सूजन"
     },
     'ta-IN': {
@@ -187,9 +187,9 @@ export default function EmergencyDashboard() {
       backToHome: "முகப்புக்குச் செல்",
       presets: "அவசர முன்னமைவுகள்",
       cpr: "உணர்வுற்ற/சிபிஆர்",
-      choking: "மூச்சுத்திணறல்",
+      accident: "விபத்து",
       bleeding: "அதிக இரத்தப்போக்கு",
-      seizure: "வலிப்பு",
+      asthma: "ஆஸ்துமா",
       allergy: "ஒவ்வாமை/வீக்கம்"
     },
     'kn-IN': {
@@ -220,9 +220,9 @@ export default function EmergencyDashboard() {
       backToHome: "ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ",
       presets: "ತುರ್ತು ಪೂರ್ವನಿಗದಿಗಳು",
       cpr: "ಪ್ರಜ್ಞಾಹೀನ/ಸಿಪಿಆರ್",
-      choking: "ಉಸಿರುಗಟ್ಟುವಿಕೆ",
+      accident: "ಅಪಘಾತ",
       bleeding: "ಅತಿಯಾದ ರಕ್ತಸ್ರಾವ",
-      seizure: "ಸೆಳೆತ",
+      asthma: "ಅಸ್ತಮಾ",
       allergy: "ಅಲರ್ಜಿ/ಊತ"
     },
     'te-IN': {
@@ -253,9 +253,9 @@ export default function EmergencyDashboard() {
       backToHome: "హోమ్‌కి తిరిగి వెళ్లు",
       presets: "అత్యవసర ప్రీసెట్లు",
       cpr: "స్పృహతప్పడం/సిపిఆర్",
-      choking: "ఊపిరాడకపోవడం",
+      accident: "ప్రమాదం",
       bleeding: "అధిక రక్తస్రావం",
-      seizure: "ఫిట్స్",
+      asthma: "ఆస్తమా",
       allergy: "అలర్జీ/వాపు"
     },
     'es-ES': {
@@ -286,9 +286,9 @@ export default function EmergencyDashboard() {
       backToHome: "Volver al Inicio",
       presets: "Emergency Presets",
       cpr: "Unconscious/CPR",
-      choking: "Choking",
+      accident: "Accidente",
       bleeding: "Heavy Bleeding",
-      seizure: "Shaking/Seizure",
+      asthma: "Asma",
       allergy: "Allergy/Swelling"
     }
   } as const;
@@ -297,9 +297,9 @@ export default function EmergencyDashboard() {
 
   const quickActions = [
     { label: t.cpr, type: EmergencyType.CARDIAC_ARREST, icon: Heart, prompt: 'Person is unconscious and not breathing, need CPR' },
-    { label: t.choking, type: EmergencyType.CHOKING, icon: Baby, prompt: 'Someone is choking and cannot breathe' },
+    { label: t.accident, type: EmergencyType.ACCIDENT, icon: AlertTriangle, prompt: 'There has been an accident' },
     { label: t.bleeding, type: EmergencyType.BLEEDING, icon: Activity, prompt: 'Severe bleeding from a wound' },
-    { label: t.seizure, type: EmergencyType.SEIZURE, icon: RefreshCcw, prompt: 'Person is having a seizure and shaking uncontrollably' },
+    { label: t.asthma, type: EmergencyType.ASTHMA, icon: RefreshCcw, prompt: 'Person is having an asthma attack and difficulty breathing' },
     { label: t.allergy, type: EmergencyType.ALLERGIC_REACTION, icon: Stethoscope, prompt: 'Severe allergic reaction with swelling and difficulty breathing' },
   ];
   useEffect(() => {
@@ -1091,7 +1091,7 @@ export default function EmergencyDashboard() {
 
       <footer className="w-full max-w-4xl mt-12 mb-4 text-center">
         <p className="text-slate-500 text-xs flex items-center justify-center gap-2">
-          <span>POWERED BY GOOGLE GEMINI</span>
+          <span className="font-bold">POWERED BY CODE HACKERS</span>
           <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
           <span>GUARDIAN AI SYSTEM V1.0</span>
         </p>
