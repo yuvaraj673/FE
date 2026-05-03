@@ -40,13 +40,23 @@ RULES:
 Return the response in JSON format.
 `;
 
-export async function analyzeEmergency(input: string): Promise<FirstAidResponse> {
+const languageMap: Record<string, string> = {
+  'en-US': 'English',
+  'hi-IN': 'Hindi',
+  'es-ES': 'Spanish',
+  'ta-IN': 'Tamil',
+  'kn-IN': 'Kannada',
+  'te-IN': 'Telugu'
+};
+
+export async function analyzeEmergency(input: string, langCode: string = 'en-US'): Promise<FirstAidResponse> {
+  const languageName = languageMap[langCode] || 'English';
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: input,
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: `${SYSTEM_INSTRUCTION}\n\nIMPORTANT: You MUST provide all textual content (situation, steps, voiceInstruction, dos, donts) in the following language: ${languageName}. However, maintain the JSON structure and keys exactly as defined.`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -97,7 +107,7 @@ export async function analyzeEmergency(input: string): Promise<FirstAidResponse>
     return JSON.parse(response.text.trim()) as FirstAidResponse;
   } catch (error) {
     console.error("Gemini analysis error:", error);
-    // Fallback for safety
+    // Fallback for safety - simple English fallback since JSON parsing might fail if we try to translate fallbacks here complexly
     return {
       urgency: UrgencyLevel.HIGH,
       situation: "Unknown Critical Emergency",
@@ -110,12 +120,13 @@ export async function analyzeEmergency(input: string): Promise<FirstAidResponse>
   }
 }
 
-export async function getChatResponse(message: string, history: any[]): Promise<string> {
+export async function getChatResponse(message: string, history: any[], langCode: string = 'en-US'): Promise<string> {
+  const languageName = languageMap[langCode] || 'English';
   try {
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: "You are the GuardianAI Rescue Assistant. You help users with follow-up questions during first-aid emergencies. Keep answers concise, medically accurate (based on general first aid), and supportive. Always prioritize calling emergency services if the situation sounds grave."
+        systemInstruction: `You are the GuardianAI Rescue Assistant. You help users with follow-up questions during first-aid emergencies. Keep answers concise, medically accurate (based on general first aid), and supportive. Always prioritize calling emergency services if the situation sounds grave. IMPORTANT: You MUST respond in ${languageName}.`
       },
       history: history
     });

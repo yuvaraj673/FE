@@ -30,7 +30,15 @@ import {
   Send,
   User,
   ClipboardList,
-  Save
+  Save,
+  MoreVertical,
+  FileText,
+  Plus,
+  Globe,
+  Image as ImageIcon,
+  Trash2,
+  LogOut,
+  Star
 } from 'lucide-react';
 import { analyzeEmergency, getChatResponse } from '../services/geminiService';
 import { FirstAidResponse, UrgencyLevel, EmergencyType, ChatMessage, Hospital } from '../types';
@@ -41,6 +49,7 @@ interface PatientInfo {
   bloodType: string;
   allergies: string;
   medications: string;
+  medicalHistory: string;
   emergencyContact: string;
 }
 
@@ -61,11 +70,238 @@ export default function EmergencyDashboard() {
     bloodType: '',
     allergies: '',
     medications: '',
+    medicalHistory: '',
     emergencyContact: ''
   });
   const [isMedicalIdOpen, setIsMedicalIdOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showQuickSummary, setShowQuickSummary] = useState(false);
+  const [language, setLanguage] = useState<'en-US' | 'hi-IN' | 'es-ES' | 'ta-IN' | 'kn-IN' | 'te-IN'>('en-US');
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [rating, setRating] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load patient info from localStorage
+  const languages = [
+    { code: 'en-US', label: 'English', native: 'English' },
+    { code: 'hi-IN', label: 'Hindi', native: 'हिन्दी' },
+    { code: 'ta-IN', label: 'Tamil', native: 'தமிழ்' },
+    { code: 'kn-IN', label: 'Kannada', native: 'ಕನ್ನಡ' },
+    { code: 'te-IN', label: 'Telugu', native: 'తెలుగు' },
+    { code: 'es-ES', label: 'Spanish', native: 'Español' }
+  ] as const;
+
+  const uiTranslations = {
+    'en-US': {
+      voiceTip: "TAP HEART OR DESCRIBE EVENT",
+      emergencyCall: "EMERGENCY CALL",
+      medicalId: "Medical ID",
+      liveGps: "Live GPS",
+      summary: "Summary",
+      next: "Next",
+      back: "Back",
+      endEvent: "End Event",
+      searching: "SEARCHING FOR HOSPITALS...",
+      hospitalsNearby: "Hospitals Nearby",
+      chatTitle: "AI RESCUE CHAT",
+      chatPlaceholder: "Ask anything about this emergency...",
+      stepsTitle: "Step-by-Step Instructions",
+      medHistory: "Medical History",
+      profile: "Patient Profile",
+      vitalsHistory: "Vitals & History",
+      updateLocation: "Update Location",
+      shareGuardian: "Share Guardian",
+      quickSummary: "Quick Summary",
+      vitalSummary: "Vital Summary",
+      editInfo: "Edit Information",
+      exit: "Exit",
+      thankYou: "Thank You",
+      rateExperience: "How was your experience?",
+      backToHome: "Back to Home",
+      presets: "Emergency Presets",
+      cpr: "Unconscious/CPR",
+      choking: "Choking",
+      bleeding: "Heavy Bleeding",
+      seizure: "Shaking/Seizure",
+      allergy: "Allergy/Swelling"
+    },
+    'hi-IN': {
+      voiceTip: "दिल दबाएं या घटना बताएं",
+      emergencyCall: "आपातकालीन कॉल",
+      medicalId: "मेडिकल आईडी",
+      liveGps: "लाइव जीपीएस",
+      summary: "सारांश",
+      next: "अगला",
+      back: "पीछे",
+      endEvent: "इवेंट समाप्त",
+      searching: "अस्पतालों की खोज...",
+      hospitalsNearby: "पास के अस्पताल",
+      chatTitle: "एआई रेस्क्यू चैट",
+      chatPlaceholder: "इस आपातकाल के बारे में कुछ भी पूछें...",
+      stepsTitle: "चरण-दर-चरण निर्देश",
+      medHistory: "चिकित्सा इतिहास",
+      profile: "रोगी प्रोफ़ाइल",
+      vitalsHistory: "वाइटल्स और इतिहास",
+      updateLocation: "स्थान अपडेट करें",
+      shareGuardian: "गार्जियन साझा करें",
+      quickSummary: "त्वरित सारांश",
+      vitalSummary: "महत्वपूर्ण सारांश",
+      editInfo: "जानकारी संपादित करें",
+      exit: "निकास",
+      thankYou: "धन्यवाद",
+      rateExperience: "आपका अनुभव कैसा रहा?",
+      backToHome: "मुख्य पृष्ठ पर लौटें",
+      presets: "आपातकालीन प्रीसेट",
+      cpr: "बेहोश/सीपीआर",
+      choking: "दम घुटना",
+      bleeding: "भारी रक्तस्राव",
+      seizure: "दौरा",
+      allergy: "एलर्जी/सूजन"
+    },
+    'ta-IN': {
+      voiceTip: "இதயத்தை அழுத்தவும் அல்லது விவரிக்கவும்",
+      emergencyCall: "அவசர அழைப்பு",
+      medicalId: "மருத்துவ ஐடி",
+      liveGps: "ஜிபிஎஸ்",
+      summary: "சுருக்கம்",
+      next: "அடுத்து",
+      back: "பின்னால்",
+      endEvent: "முடி",
+      searching: "தேடுகிறது...",
+      hospitalsNearby: "அருகிலுள்ளவை",
+      chatTitle: "மீட்பு அரட்டை",
+      chatPlaceholder: "கேளுங்கள்...",
+      stepsTitle: "வழிமுறைகள்",
+      medHistory: "மருத்துவ வரலாறு",
+      profile: "நோயாளி விவரம்",
+      vitalsHistory: "வரலாறு",
+      updateLocation: "இடத்தைப் புதுப்பி",
+      shareGuardian: "பகிர்",
+      quickSummary: "சுருக்கம்",
+      vitalSummary: "முக்கிய சுருக்கம்",
+      editInfo: "தொகு",
+      exit: "வெளியேறு",
+      thankYou: "நன்றி",
+      rateExperience: "உங்கள் அனுபவம் எப்படி இருந்தது?",
+      backToHome: "முகப்புக்குச் செல்",
+      presets: "அவசர முன்னமைவுகள்",
+      cpr: "உணர்வுற்ற/சிபிஆர்",
+      choking: "மூச்சுத்திணறல்",
+      bleeding: "அதிக இரத்தப்போக்கு",
+      seizure: "வலிப்பு",
+      allergy: "ஒவ்வாமை/வீக்கம்"
+    },
+    'kn-IN': {
+      voiceTip: "ಹೃದಯ ಸ್ಪರ್ಶಿಸಿ ಅಥವಾ ವಿವರಿಸಿ",
+      emergencyCall: "ತುರ್ತು ಕರೆ",
+      medicalId: "ವೈದ್ಯಕೀಯ ಐಡಿ",
+      liveGps: "ಜಿಪಿಎಸ್",
+      summary: "ಸಾರಾಂಶ",
+      next: "ಮುಂದೆ",
+      back: "ಹಿಂದೆ",
+      endEvent: "ಅಂತ್ಯ",
+      searching: "ಹುಡುಕಲಾಗುತ್ತಿದೆ...",
+      hospitalsNearby: "ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗಳು",
+      chatTitle: "ಪಾರುಗಾಣಿಕಾ ಚಾಟ್",
+      chatPlaceholder: "ಕೇಳಿ...",
+      stepsTitle: "ಸೂಚನೆಗಳು",
+      medHistory: "ವೈದ್ಯಕೀಯ ಇತಿಹಾಸ",
+      profile: "ರೋಗಿಯ ವಿವರ",
+      vitalsHistory: "ಇತಿಹಾಸ",
+      updateLocation: "ಸ್ಥಳವನ್ನು ನವೀಕರಿಸಿ",
+      shareGuardian: "ಹಂಚಿಕೊಳ್ಳಿ",
+      quickSummary: "ಸಾರಾಂಶ",
+      vitalSummary: "ಪ್ರಮುಖ ಸಾರಾಂಶ",
+      editInfo: "ತಿದ್ದಿ",
+      exit: "ನಿರ್ಗಮನ",
+      thankYou: "ಧನ್ಯವಾದಗಳು",
+      rateExperience: "ನಿಮ್ಮ ಅನುಭವ ಹೇಗಿತ್ತು?",
+      backToHome: "ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ",
+      presets: "ತುರ್ತು ಪೂರ್ವನಿಗದಿಗಳು",
+      cpr: "ಪ್ರಜ್ಞಾಹೀನ/ಸಿಪಿಆರ್",
+      choking: "ಉಸಿರುಗಟ್ಟುವಿಕೆ",
+      bleeding: "ಅತಿಯಾದ ರಕ್ತಸ್ರಾವ",
+      seizure: "ಸೆಳೆತ",
+      allergy: "ಅಲರ್ಜಿ/ಊತ"
+    },
+    'te-IN': {
+      voiceTip: "గుండెను తాకండి లేదా వివరించండి",
+      emergencyCall: "అత్యవసర కాల్",
+      medicalId: "మెడికల్ ఐడి",
+      liveGps: "జీపీఎస్",
+      summary: "సారాంశం",
+      next: "తరువాత",
+      back: "వెనుకకు",
+      endEvent: "ముగింపు",
+      searching: "వెతుకుతోంది...",
+      hospitalsNearby: "దగ్గరివి",
+      chatTitle: "రెస్క్యూ చాట్",
+      chatPlaceholder: "అడగండి...",
+      stepsTitle: "సూచనలు",
+      medHistory: "వైద్య చరిత్ర",
+      profile: "రోగి ప్రొఫైల్",
+      vitalsHistory: "చరిత్ర",
+      updateLocation: "స్థానాన్ని నవీకరించు",
+      shareGuardian: "షేర్ చేయండి",
+      quickSummary: "సారాంశం",
+      vitalSummary: "కీలక సారాంశం",
+      editInfo: "సవరించు",
+      exit: "నిష్క్రమణ",
+      thankYou: "ధన్యవాదాలు",
+      rateExperience: "మీ అనుభవం ఎలా ఉంది?",
+      backToHome: "హోమ్‌కి తిరిగి వెళ్లు",
+      presets: "అత్యవసర ప్రీసెట్లు",
+      cpr: "స్పృహతప్పడం/సిపిఆర్",
+      choking: "ఊపిరాడకపోవడం",
+      bleeding: "అధిక రక్తస్రావం",
+      seizure: "ఫిట్స్",
+      allergy: "అలర్జీ/వాపు"
+    },
+    'es-ES': {
+      voiceTip: "TOCA O DESCRIBE EL EVENTO",
+      emergencyCall: "EMERGENCIA",
+      medicalId: "ID Médico",
+      liveGps: "GPS",
+      summary: "Resumen",
+      next: "Siguiente",
+      back: "Atrás",
+      endEvent: "Finalizar",
+      searching: "BUSCANDO...",
+      hospitalsNearby: "Hospitales cercanos",
+      chatTitle: "CHAT DE RESCATE",
+      chatPlaceholder: "Pregunta...",
+      stepsTitle: "Instrucciones",
+      medHistory: "Historia Médica",
+      profile: "Perfil del Paciente",
+      vitalsHistory: "Signos y Historia",
+      updateLocation: "Actualizar GPS",
+      shareGuardian: "Compartir",
+      quickSummary: "Resumen Rápido",
+      vitalSummary: "Resumen Vital",
+      editInfo: "Editar Información",
+      exit: "Salir",
+      thankYou: "Gracias",
+      rateExperience: "¿Cómo fue tu experiencia?",
+      backToHome: "Volver al Inicio",
+      presets: "Emergency Presets",
+      cpr: "Unconscious/CPR",
+      choking: "Choking",
+      bleeding: "Heavy Bleeding",
+      seizure: "Shaking/Seizure",
+      allergy: "Allergy/Swelling"
+    }
+  } as const;
+
+  const t = uiTranslations[language];
+
+  const quickActions = [
+    { label: t.cpr, type: EmergencyType.CARDIAC_ARREST, icon: Heart, prompt: 'Person is unconscious and not breathing, need CPR' },
+    { label: t.choking, type: EmergencyType.CHOKING, icon: Baby, prompt: 'Someone is choking and cannot breathe' },
+    { label: t.bleeding, type: EmergencyType.BLEEDING, icon: Activity, prompt: 'Severe bleeding from a wound' },
+    { label: t.seizure, type: EmergencyType.SEIZURE, icon: RefreshCcw, prompt: 'Person is having a seizure and shaking uncontrollably' },
+    { label: t.allergy, type: EmergencyType.ALLERGIC_REACTION, icon: Stethoscope, prompt: 'Severe allergic reaction with swelling and difficulty breathing' },
+  ];
   useEffect(() => {
     const saved = localStorage.getItem('guardian_medical_id');
     if (saved) {
@@ -162,7 +398,7 @@ export default function EmergencyDashboard() {
       const recognition = new (window as any).webkitSpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US';
+      recognition.lang = language;
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
@@ -176,7 +412,7 @@ export default function EmergencyDashboard() {
 
       recognitionRef.current = recognition;
     }
-  }, []);
+  }, [language]);
 
   const toggleRecording = () => {
     if (isRecording) {
@@ -188,6 +424,22 @@ export default function EmergencyDashboard() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setAttachedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleAnalyze = async (textOverride?: string) => {
     const textToUse = textOverride || input;
     if (!textToUse.trim()) return;
@@ -197,7 +449,7 @@ export default function EmergencyDashboard() {
     setActiveStep(0);
 
     try {
-      const response = await analyzeEmergency(textToUse);
+      const response = await analyzeEmergency(textToUse, language);
       setResult(response);
       setIsTimerRunning(true);
       if (!isMuted) {
@@ -214,6 +466,7 @@ export default function EmergencyDashboard() {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language;
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       window.speechSynthesis.speak(utterance);
@@ -221,11 +474,13 @@ export default function EmergencyDashboard() {
   };
 
   const handleNextStep = () => {
-    if (result && activeStep < result.steps.length - 1) {
+    if (result && activeStep < result.steps.length) {
       const next = activeStep + 1;
       setActiveStep(next);
-      if (!isMuted) {
+      if (!isMuted && next < result.steps.length) {
         speak(result.steps[next]);
+      } else if (!isMuted && next === result.steps.length) {
+        speak("Displaying medical ID information for first responders.");
       }
     }
   };
@@ -250,7 +505,7 @@ export default function EmergencyDashboard() {
         parts: [{ text: m.content }]
       }));
 
-      const response = await getChatResponse(userMsg.content, history);
+      const response = await getChatResponse(userMsg.content, history, language);
       
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -274,15 +529,9 @@ export default function EmergencyDashboard() {
     setResult(null);
     setIsTimerRunning(false);
     setTimerSeconds(0);
+    setShowFeedback(true);
+    setRating(0);
   };
-
-  const quickActions = [
-    { label: 'Unconscious/CPR', type: EmergencyType.CARDIAC_ARREST, icon: Heart, prompt: 'Person is unconscious and not breathing, need CPR' },
-    { label: 'Choking', type: EmergencyType.CHOKING, icon: Baby, prompt: 'Someone is choking and cannot breathe' },
-    { label: 'Heavy Bleeding', type: EmergencyType.BLEEDING, icon: Activity, prompt: 'Severe bleeding from a wound' },
-    { label: 'Shaking/Seizure', type: EmergencyType.SEIZURE, icon: RefreshCcw, prompt: 'Person is having a seizure and shaking uncontrollably' },
-    { label: 'Allergy/Swelling', type: EmergencyType.ALLERGIC_REACTION, icon: Stethoscope, prompt: 'Severe allergic reaction with swelling and difficulty breathing' },
-  ];
 
   const PulseCircle = () => (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden z-0">
@@ -332,14 +581,131 @@ export default function EmergencyDashboard() {
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsMedicalIdOpen(true)}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all shadow-lg"
-            title="Medical ID"
-          >
-            <User className="w-5 h-5" />
-          </button>
+        <div className="flex items-center gap-2 relative">
+          {/* Language Selector */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
+              className={`p-2.5 rounded-xl border transition-all shadow-lg flex items-center gap-2 ${isLanguageMenuOpen ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
+              title="Change Language"
+            >
+              <Globe className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">
+                {languages.find(l => l.code === language)?.label}
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {isLanguageMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsLanguageMenuOpen(false)} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 backdrop-blur-xl"
+                  >
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          setLanguage(lang.code);
+                          setIsLanguageMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-3 text-left rounded-xl transition-colors ${language === lang.code ? 'bg-red-600/10 text-red-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black uppercase tracking-widest">{lang.label}</span>
+                          <span className="text-[9px] font-bold opacity-60 uppercase">{lang.native}</span>
+                        </div>
+                        {language === lang.code && <CheckCircle2 className="w-3 h-3" />}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="relative">
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={`p-2.5 rounded-xl border transition-all shadow-lg ${isMenuOpen ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
+              title="Options"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            <AnimatePresence>
+              {isMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsMenuOpen(false)} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 backdrop-blur-xl"
+                  >
+                    <button 
+                      onClick={() => {
+                        setIsMedicalIdOpen(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-800 rounded-xl transition-colors group"
+                    >
+                      <div className="bg-red-600/10 p-2 rounded-lg group-hover:bg-red-600/20 transition-colors">
+                        <User className="w-4 h-4 text-red-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-slate-100 uppercase tracking-widest">Medical ID</span>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Patient Profile</span>
+                      </div>
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        setShowQuickSummary(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-800 rounded-xl transition-colors group"
+                    >
+                      <div className="bg-blue-600/10 p-2 rounded-lg group-hover:bg-blue-600/20 transition-colors">
+                        <FileText className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-slate-100 uppercase tracking-widest">Summary</span>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Vitals & History</span>
+                      </div>
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        requestLocation();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-800 rounded-xl transition-colors group"
+                    >
+                      <div className="bg-emerald-600/10 p-2 rounded-lg group-hover:bg-emerald-600/20 transition-colors">
+                        <MapPin className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-slate-100 uppercase tracking-widest">Live GPS</span>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Update Location</span>
+                      </div>
+                    </button>
+
+                    <div className="border-t border-slate-800 my-1" />
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
           
           <a 
             href="tel:100"
@@ -375,19 +741,44 @@ export default function EmergencyDashboard() {
           >
             {/* Main Input Area */}
             <div className="text-center space-y-6">
-              <h2 className="text-3xl md:text-5xl font-extrabold text-slate-100">What is the emergency?</h2>
-              <p className="text-slate-400 max-w-lg mx-auto">Speak or type clearly. We will guide you through the process as help arrives.</p>
+              <h2 className="text-3xl md:text-5xl font-extrabold text-slate-100">{language === 'hi-IN' ? 'आपातकाल क्या है?' : language === 'ta-IN' ? 'அவசரநிலை என்ன?' : language === 'kn-IN' ? 'ತುರ್ತು ಪರಿಸ್ಥಿತಿ ಏನು?' : language === 'te-IN' ? 'అత్యవసర పరిస్థితి ఏమిటి?' : language === 'es-ES' ? '¿Cuál es la emergencia?' : 'What is the emergency?'}</h2>
+              <p className="text-slate-400 max-w-lg mx-auto">{language === 'hi-IN' ? 'स्पष्ट रूप से बोलें या टाइप करें। सहायता आने पर हम प्रक्रिया में आपका मार्गदर्शन करेंगे।' : language === 'ta-IN' ? 'தெளிவாக பேசவும் அல்லது தட்டச்சு செய்யவும். உதவி வரும்போது நாங்கள் உங்களுக்கு வழிகாட்டுவோம்.' : language === 'kn-IN' ? 'ಸ್ಪಷ್ಟವಾಗಿ ಮಾತನಾಡಿ ಅಥವಾ ಟೈಪ್ ಮಾಡಿ. ಸಹಾಯ ಬಂದಾಗ ನಾವು ನಿಮಗೆ ಮಾರ್ಗದರ್ಶನ ನೀಡುತ್ತೇವೆ.' : language === 'te-IN' ? 'స్పష్టంగా మాట్లాడండి లేదా టైప్ చేయండి. సాయం అందే వరకు మేము మీకు మార్గనిర్దేశం చేస్తాము.' : language === 'es-ES' ? 'Habla o escribe claramente. Te guiaremos a medida que llega la ayuda.' : 'Speak or type clearly. We will guide you through the process as help arrives.'}</p>
               
               <div className="relative group max-w-2xl mx-auto">
+                {attachedImage && (
+                  <div className="absolute -top-20 left-0 flex items-center gap-2 bg-slate-900/90 border border-slate-700 p-2 rounded-2xl animate-in fade-in slide-in-from-bottom-4">
+                    <img src={attachedImage} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />
+                    <button 
+                      onClick={clearImage}
+                      className="p-1 px-2 text-[10px] font-black uppercase text-red-500 hover:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
                 <input 
                   type="text" 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                  placeholder="Describe the situation..."
-                  className="w-full bg-slate-900 border-2 border-slate-800 focus:border-red-500 rounded-2xl px-6 py-6 text-xl outline-none transition-all pr-32 text-slate-100 placeholder:text-slate-400"
+                  placeholder={language === 'hi-IN' ? 'स्थिति का वर्णन करें...' : language === 'ta-IN' ? 'சூழ்நிலையை விவரிக்கவும்...' : language === 'kn-IN' ? 'ಪರಿಸ್ಥಿತಿಯನ್ನು ವಿವರಿಸಿ...' : language === 'te-IN' ? 'పరిస్థితిని వివరించండి...' : language === 'es-ES' ? 'Describe la situación...' : 'Describe the situation...'}
+                  className="w-full bg-slate-900 border-2 border-slate-800 focus:border-red-500 rounded-2xl px-6 py-6 text-xl outline-none transition-all pr-44 text-slate-100 placeholder:text-slate-400"
+                />
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors"
+                    title="Upload Photo"
+                  >
+                    <Plus className="w-6 h-6" />
+                  </button>
                   <button 
                     onClick={toggleRecording}
                     className={`p-3 rounded-xl transition-colors ${isRecording ? 'bg-red-600 animate-pulse text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-400'}`}
@@ -396,7 +787,7 @@ export default function EmergencyDashboard() {
                   </button>
                   <button 
                     onClick={() => handleAnalyze()}
-                    disabled={loading || !input.trim()}
+                    disabled={loading || (!input.trim() && !attachedImage)}
                     className="bg-slate-50 text-slate-950 p-3 rounded-xl hover:opacity-90 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
                   >
                     <ChevronRight className="w-6 h-6" />
@@ -407,7 +798,7 @@ export default function EmergencyDashboard() {
 
             {/* Quick Actions */}
             <div className="space-y-4">
-              <p className="text-xs uppercase tracking-widest text-slate-500 font-black ml-1">Emergency Presets</p>
+              <p className="text-xs uppercase tracking-widest text-slate-500 font-black ml-1">{t.presets}</p>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {quickActions.map((action) => (
                   <button
@@ -468,21 +859,76 @@ export default function EmergencyDashboard() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-xl">
                 <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                  <h4 className="font-black text-xs uppercase tracking-[0.2em] text-slate-400">Step-by-Step Instructions</h4>
-                  <span className="text-slate-500 font-mono text-xs font-bold tracking-tighter">{activeStep + 1} OF {result.steps.length}</span>
+                  <h4 className="font-black text-xs uppercase tracking-[0.2em] text-slate-400">
+                    {activeStep === result.steps.length ? t.profile : t.stepsTitle}
+                  </h4>
+                  <span className="text-slate-500 font-mono text-xs font-bold tracking-tighter">
+                    {activeStep === result.steps.length ? 'FINAL' : `${activeStep + 1} OF ${result.steps.length}`}
+                  </span>
                 </div>
                 
                 <div className="flex-grow p-8 flex flex-col justify-center items-center text-center space-y-8 min-h-[350px]">
                   <AnimatePresence mode="wait">
-                    <motion.p 
-                      key={activeStep}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.05 }}
-                      className="text-3xl md:text-5xl font-black leading-tight text-slate-100"
-                    >
-                      {result.steps[activeStep]}
-                    </motion.p>
+                    {activeStep < result.steps.length ? (
+                      <motion.p 
+                        key={`step-${activeStep}`}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.05 }}
+                        className="text-3xl md:text-5xl font-black leading-tight text-slate-100"
+                      >
+                        {result.steps[activeStep]}
+                      </motion.p>
+                    ) : (
+                      <motion.div
+                        key="medical-id-summary"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="w-full max-w-lg space-y-6 text-left"
+                      >
+                        <div className="bg-red-600/10 border border-red-500/20 p-6 rounded-[2rem] space-y-4">
+                          <div className="flex items-center gap-4 mb-2">
+                            <div className="bg-red-600 p-2 rounded-xl">
+                              <ClipboardList className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-100 uppercase tracking-widest">{t.quickSummary}</h3>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Patient</p>
+                              <p className="text-lg font-bold text-slate-100">{patientInfo.name || 'Not Provided'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Blood Type</p>
+                              <p className="text-lg font-bold text-red-500">{patientInfo.bloodType || 'Unknown'}</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Allergies</p>
+                            <p className="text-sm font-bold text-slate-200">{patientInfo.allergies || 'No known allergies'}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Current Medications</p>
+                            <p className="text-sm font-bold text-slate-200">{patientInfo.medications || 'None listed'}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Medical History</p>
+                            <p className="text-sm font-bold text-slate-200">{patientInfo.medicalHistory || 'None provided'}</p>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Emergency Contact</p>
+                            <p className="text-sm font-bold text-slate-200">{patientInfo.emergencyContact || 'None listed'}</p>
+                          </div>
+                        </div>
+                        <p className="text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Present this info to paramedics</p>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
 
@@ -492,14 +938,14 @@ export default function EmergencyDashboard() {
                     onClick={() => setActiveStep(prev => prev - 1)}
                     className="py-4 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-20 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 border border-slate-700"
                   >
-                    Back
+                    {t.back}
                   </button>
                   <button 
-                    onClick={activeStep === result.steps.length - 1 ? handleReset : handleNextStep}
+                    onClick={activeStep === result.steps.length ? handleReset : handleNextStep}
                     className="py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 flex justify-center items-center gap-2 shadow-lg shadow-red-900/20"
                   >
-                    <span>{activeStep === result.steps.length - 1 ? 'End Event' : 'Next'}</span>
-                    {activeStep !== result.steps.length - 1 && <ChevronRight className="w-4 h-4" />}
+                    <span>{activeStep === result.steps.length ? t.endEvent : t.next}</span>
+                    {activeStep !== result.steps.length && <ChevronRight className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -652,7 +1098,25 @@ export default function EmergencyDashboard() {
       </footer>
 
       {/* Chat Bot UI */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {result && !isChatOpen && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8, x: 20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: 20 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleReset}
+              className="p-4 bg-slate-900 border border-slate-800 text-red-500 rounded-full shadow-2xl flex items-center gap-3 transition-all hover:bg-red-600 hover:text-white group"
+              title="Exit Emergency"
+            >
+              <LogOut className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="font-black text-xs uppercase tracking-widest hidden md:block">{t.exit}</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
           {isChatOpen && (
             <motion.div
@@ -668,7 +1132,7 @@ export default function EmergencyDashboard() {
                     <MessageCircle className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-black text-xs uppercase tracking-widest text-slate-100">Rescue Assistant</h3>
+                    <h3 className="font-black text-xs uppercase tracking-widest text-slate-100">{t.chatTitle}</h3>
                     <p className="text-[9px] text-emerald-500 font-black uppercase tracking-tighter">AI Responder Online</p>
                   </div>
                 </div>
@@ -687,7 +1151,7 @@ export default function EmergencyDashboard() {
                     <div className="bg-slate-800 p-5 rounded-3xl mb-4">
                       <Stethoscope className="w-10 h-10 text-slate-400" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">Ask any medical question</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">{t.chatPlaceholder}</p>
                   </div>
                 )}
                 {chatMessages.map((msg) => (
@@ -726,7 +1190,7 @@ export default function EmergencyDashboard() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type a vital question..."
+                    placeholder={t.chatPlaceholder}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 text-sm outline-none focus:border-red-500 transition-all pr-14 text-slate-100 shadow-inner"
                   />
                   <button 
@@ -751,7 +1215,7 @@ export default function EmergencyDashboard() {
           {isChatOpen ? <X className="w-6 h-6" /> : (
             <>
               <MessageCircle className="w-6 h-6" />
-              <span className="font-bold text-sm hidden md:block">Rescue Chat</span>
+              <span className="font-bold text-sm hidden md:block">{t.chatTitle}</span>
             </>
           )}
         </motion.button>
@@ -791,7 +1255,32 @@ export default function EmergencyDashboard() {
               </div>
 
               <div className="flex-grow overflow-y-auto space-y-6 pr-2 custom-scrollbar">
-                <p className="text-xs text-slate-500 uppercase font-black tracking-widest">Patient Information</p>
+                {/* Quick Glance Summary Section */}
+                {(patientInfo.allergies || patientInfo.medications || patientInfo.medicalHistory) && (
+                  <div className="bg-red-600/10 border border-red-500/20 p-5 rounded-3xl space-y-4 mb-2">
+                    <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] mb-1">Vital Summary</p>
+                    {patientInfo.allergies && (
+                      <div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Allergies</p>
+                        <p className="text-sm font-bold text-slate-200">{patientInfo.allergies}</p>
+                      </div>
+                    )}
+                    {patientInfo.medications && (
+                      <div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Medications</p>
+                        <p className="text-sm font-bold text-slate-200">{patientInfo.medications}</p>
+                      </div>
+                    )}
+                    {patientInfo.medicalHistory && (
+                      <div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Med History</p>
+                        <p className="text-sm font-bold text-slate-200 line-clamp-2">{patientInfo.medicalHistory}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-xs text-slate-500 uppercase font-black tracking-widest">Edit Information</p>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -849,6 +1338,16 @@ export default function EmergencyDashboard() {
                   </div>
 
                   <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black text-slate-400 tracking-tighter">Medical History</label>
+                    <textarea 
+                      value={patientInfo.medicalHistory}
+                      onChange={(e) => setPatientInfo({...patientInfo, medicalHistory: e.target.value})}
+                      placeholder="Surgeries, chronic conditions, etc..."
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 outline-none focus:border-red-500 transition-all font-bold min-h-[80px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <label className="text-[10px] uppercase font-black text-slate-400 tracking-tighter">Emergency Contact</label>
                     <input 
                       type="text"
@@ -873,6 +1372,136 @@ export default function EmergencyDashboard() {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Quick Summary Modal */}
+      <AnimatePresence>
+        {showQuickSummary && (
+          <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQuickSummary(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-blue-500 to-red-500"></div>
+              
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-600 p-2 rounded-xl">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-100 uppercase tracking-widest">{t.quickSummary}</h3>
+                </div>
+                <button 
+                  onClick={() => setShowQuickSummary(false)}
+                  className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Blood Type</p>
+                    <p className="text-xl font-black text-red-500">{patientInfo.bloodType || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Age</p>
+                    <p className="text-xl font-black text-slate-100">{patientInfo.age || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter mb-1">Allergies</p>
+                  <p className="text-sm font-bold text-slate-200">{patientInfo.allergies || 'No known allergies reported'}</p>
+                </div>
+
+                <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter mb-1">Medications</p>
+                  <p className="text-sm font-bold text-slate-200">{patientInfo.medications || 'None listed'}</p>
+                </div>
+
+                <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter mb-1">History</p>
+                  <p className="text-sm font-bold text-slate-200 line-clamp-3">{patientInfo.medicalHistory || 'No history recorded'}</p>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setShowQuickSummary(false);
+                    setIsMedicalIdOpen(true);
+                  }}
+                  className="w-full py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                >
+                  {t.medicalId}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Feedback Modal */}
+      <AnimatePresence>
+        {showFeedback && (
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFeedback(false)}
+              className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-[3rem] p-10 shadow-2xl overflow-hidden text-center"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-emerald-500 to-red-600"></div>
+              
+              <div className="flex justify-center mb-6">
+                <div className="bg-emerald-600/10 p-4 rounded-full border border-emerald-500/20">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                </div>
+              </div>
+
+              <h3 className="text-3xl font-black text-slate-100 uppercase tracking-tighter mb-2">{t.thankYou}</h3>
+              <p className="text-slate-400 text-sm font-medium mb-8 uppercase tracking-widest">{t.rateExperience}</p>
+
+              <div className="flex justify-center gap-2 mb-10">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className="p-1 transition-transform active:scale-90"
+                  >
+                    <Star 
+                      className={`w-8 h-8 transition-colors ${
+                        star <= rating ? 'fill-yellow-500 text-yellow-500' : 'text-slate-700 hover:text-slate-500'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setShowFeedback(false)}
+                className="w-full py-4 bg-slate-100 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-white/5"
+              >
+                {t.backToHome}
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
