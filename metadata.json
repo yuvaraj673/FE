@@ -1,0 +1,6 @@
+{
+  "name": "GuardianAI: Emergency First Aid Assistant",
+  "description": "An AI-powered emergency response system that provides immediate, step-by-step first aid guidance based on situation analysis and urgency detection.",
+  "requestFramePermissions": ["microphone", "geolocation"],
+  "majorCapabilities": ["AI-powered emergency classification", "Step-by-step first aid guidance", "Voice control & text-to-speech"]
+}
